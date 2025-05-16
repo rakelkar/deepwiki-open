@@ -1,6 +1,6 @@
 {
   "embedder": {
-    "client_class": "OpenAIClient",
+    "client_class": "AzureOpenAIClient",
     "batch_size": 500,
     "model_kwargs": {
       "model": "text-embedding-3-small",

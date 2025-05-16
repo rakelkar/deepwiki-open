@@ -7,6 +7,7 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 from api.openai_client import OpenAIClient
+from api.azureopenai_client import AzureOpenAIClient
 from api.openrouter_client import OpenRouterClient
 from adalflow import GoogleGenAIClient, OllamaClient
 
@@ -30,6 +31,7 @@ CONFIG_DIR = os.environ.get('DEEPWIKI_CONFIG_DIR', None)
 CLIENT_CLASSES = {
     "GoogleGenAIClient": GoogleGenAIClient,
     "OpenAIClient": OpenAIClient,
+    "AzureOpenAIClient": AzureOpenAIClient,
     "OpenRouterClient": OpenRouterClient,
     "OllamaClient": OllamaClient
 }
@@ -67,10 +69,11 @@ def load_generator_config():
             if provider_config.get("client_class") in CLIENT_CLASSES:
                 provider_config["model_client"] = CLIENT_CLASSES[provider_config["client_class"]]
             # Fall back to default mapping based on provider_id
-            elif provider_id in ["google", "openai", "openrouter", "ollama"]:
+            elif provider_id in ["google", "openai", "openrouter", "ollama", "azureopenai"]:
                 default_map = {
                     "google": GoogleGenAIClient,
                     "openai": OpenAIClient,
+                    "azureopenai": AzureOpenAIClient,
                     "openrouter": OpenRouterClient,
                     "ollama": OllamaClient
                 }
@@ -148,7 +151,7 @@ repo_config = load_repo_config()
 
 # Update configuration
 if generator_config:
-    configs["default_provider"] = generator_config.get("default_provider", "google")
+    configs["default_provider"] = generator_config.get("default_provider", "openai")
     configs["providers"] = generator_config.get("providers", {})
 
 # Update embedder configuration
