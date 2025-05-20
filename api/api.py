@@ -42,10 +42,10 @@ security = HTTPBearer()
 async def verify_bearer_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
     token = credentials.credentials
     try:
-        payload: Dict = jwt.decode(token)
+        payload: Dict = jwt.decode(token, options={"verify_signature": False})
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
-    
+
     # Check that the token is from the official Microsoft tenant
     if payload.get("tid") != OFFICIAL_MICROSOFT_TENANT:
         raise HTTPException(status_code=401, detail="Token not issued from the official tenant")

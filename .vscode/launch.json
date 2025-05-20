@@ -13,7 +13,7 @@
                 "8001"
             ],
             "jinja": true,
-            "justMyCode": false,
+            "justMyCode": true,
         }
     ]
 }
