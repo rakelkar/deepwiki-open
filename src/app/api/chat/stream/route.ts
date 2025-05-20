@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
         'Accept': 'text/event-stream', // Indicate that we expect a stream
         // TODO: Consider forwarding other relevant headers from the original request (req.headers) if needed,
         // for example, an Authorization header.
+        'Authorization': 'Bearer ' + process.env.BEARER_TOKEN, // Passing bearer token straight for now
       },
       body: JSON.stringify(requestBody),
     });

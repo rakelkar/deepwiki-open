@@ -12,6 +12,7 @@ export async function GET() {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'Authorization': 'Bearer ' + process.env.BEARER_TOKEN, // Passing bearer token straight for now
       }
     });
 
