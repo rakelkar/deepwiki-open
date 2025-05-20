@@ -1,14 +1,16 @@
 import os
 import logging
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional, Dict, Any, Literal
 import json
 from datetime import datetime
 from pydantic import BaseModel, Field
 import google.generativeai as genai
 import asyncio
+import jwt
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -21,6 +23,41 @@ if google_api_key:
     genai.configure(api_key=google_api_key)
 else:
     logger.warning("GOOGLE_API_KEY not found in environment variables")
+
+# Hardcoded allowed users (for now)
+ALLOWED_USERS = {
+    "viykeosuji@microsoft.com",
+    "rakelkar@microsoft.com",
+    "akhilanand@microsoft.com",
+    "matferrari@microsoft.com",
+    "sanram@microsoft.com",
+    "Shad.Khan@microsoft.com",
+    # add more allowed users as needed
+}
+
+OFFICIAL_MICROSOFT_TENANT = "72f988bf-86f1-41af-91ab-2d7cd011db47"
+
+security = HTTPBearer()
+
+async def verify_bearer_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
+    token = credentials.credentials
+    try:
+        payload: Dict = jwt.decode(token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid bearer token")
+    
+    # Check that the token is from the official Microsoft tenant
+    if payload.get("tid") != OFFICIAL_MICROSOFT_TENANT:
+        raise HTTPException(status_code=401, detail="Token not issued from the official tenant")
+    
+    # Check that the user is authorized. Depending on your token, adjust the claim (e.g., "upn" or "email")
+    user = payload.get("upn") or payload.get("email")
+    if not user or user.lower() not in ALLOWED_USERS:
+        raise HTTPException(status_code=401, detail="User is not authorized")
+    
+    logger.info(f"{user} successfully logged in")
+    # Optionally return the decoded token or user info for further use
+    return payload
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -123,7 +160,7 @@ class ModelConfig(BaseModel):
 
 from api.config import configs
 
-@app.get("/models/config", response_model=ModelConfig)
+@app.get("/models/config", response_model=ModelConfig, dependencies=[Depends(verify_bearer_token)])
 async def get_model_config():
     """
     Get available model providers and their models.
@@ -353,7 +390,7 @@ def generate_json_export(repo_url: str, pages: List[WikiPage]) -> str:
 from api.simple_chat import chat_completions_stream
 
 # Add the chat_completions_stream endpoint to the main app
-app.add_api_route("/chat/completions/stream", chat_completions_stream, methods=["POST"])
+app.add_api_route("/chat/completions/stream", chat_completions_stream, methods=["POST"], dependencies=[Depends(verify_bearer_token)])
 
 # --- Wiki Cache Helper Functions ---
 
