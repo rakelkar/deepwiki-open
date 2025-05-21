@@ -11,9 +11,14 @@ from pydantic import BaseModel, Field
 import google.generativeai as genai
 import asyncio
 import jwt
+from dotenv import load_dotenv
+
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Get API keys from environment variables
 google_api_key = os.environ.get('GOOGLE_API_KEY')
@@ -36,6 +41,7 @@ ALLOWED_USERS = {
 }
 
 OFFICIAL_MICROSOFT_TENANT = "72f988bf-86f1-41af-91ab-2d7cd011db47"
+OFFICIAL_AME_GBL = "33e01921-4d64-4f8c-a055-5bdaffd5e33d"
 
 security = HTTPBearer()
 
@@ -46,8 +52,12 @@ async def verify_bearer_token(credentials: HTTPAuthorizationCredentials = Securi
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
 
+    # Check that the token is not expired
+    if payload.get("exp") and payload["exp"] < datetime.now().timestamp():
+        raise HTTPException(status_code=401, detail="Token has expired")
+
     # Check that the token is from the official Microsoft tenant
-    if payload.get("tid") != OFFICIAL_MICROSOFT_TENANT:
+    if payload.get("tid") != OFFICIAL_MICROSOFT_TENANT and payload.get("tid") != OFFICIAL_AME_GBL:
         raise HTTPException(status_code=401, detail="Token not issued from the official tenant")
     
     # Check that the user is authorized. Depending on your token, adjust the claim (e.g., "upn" or "email")
