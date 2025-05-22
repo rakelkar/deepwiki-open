@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Deepwiki-Open",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
@@ -13,7 +13,7 @@
                 "8001"
             ],
             "jinja": true,
-            "justMyCode": true
+            "justMyCode": true,
         }
     ]
 }

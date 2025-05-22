@@ -9,6 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+yarn.lock
 
 # Python
 __pycache__/
@@ -42,6 +43,7 @@ wheels/
 
 # production
 /build
+logs/*
 
 # misc
 .DS_Store
