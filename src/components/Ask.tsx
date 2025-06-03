@@ -27,6 +27,7 @@ interface AskProps {
   isCustomModel?: boolean;
   customModel?: string;
   language?: string;
+  bearerToken?: string;
   onRef?: (ref: { clearConversation: () => void }) => void;
 }
 
@@ -37,6 +38,7 @@ const Ask: React.FC<AskProps> = ({
   isCustomModel = false,
   customModel = '',
   language = 'en',
+  bearerToken = '',
   onRef
 }) => {
   const [question, setQuestion] = useState('');
@@ -252,6 +254,7 @@ const Ask: React.FC<AskProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + bearerToken // Use bearer token if provided,
         },
         body: JSON.stringify(requestBody)
       });
@@ -428,6 +431,7 @@ const Ask: React.FC<AskProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + bearerToken // Use bearer token if provided,
         },
         body: JSON.stringify(requestBody)
       });
