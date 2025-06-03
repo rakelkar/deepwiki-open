@@ -74,6 +74,9 @@ export default function Home() {
 
   const [repositoryInput, setRepositoryInput] = useState('https://github.com/AsyncFuncAI/deepwiki-open');
 
+  // State for bearer token - used for API requests
+  const [bearerToken, setBearerToken] = useState('');
+
   // Provider-based model selection state
   const [provider, setProvider] = useState<string>('');
   const [model, setModel] = useState<string>('');
@@ -229,6 +232,8 @@ export default function Home() {
     // Add comprehensive parameter
     params.append('comprehensive', isComprehensiveView.toString());
 
+    params.append('bearer_token', bearerToken);
+
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
     // Navigate to the dynamic route
@@ -304,6 +309,8 @@ export default function Home() {
             setIsCustomModel={setIsCustomModel}
             customModel={customModel}
             setCustomModel={setCustomModel}
+            bearerToken={bearerToken}
+            setBearerToken={setBearerToken}
             selectedPlatform={selectedPlatform}
             setSelectedPlatform={setSelectedPlatform}
             accessToken={accessToken}

@@ -32,6 +32,7 @@
     "repository": "Repository",
     "configureWiki": "Configure Wiki",
     "repoPlaceholder": "owner/repo or GitHub/GitLab/Bitbucket URL",
+    "bearerToken": "Bearer Token (for backend authentication). Run `echo $(az account get-access-token --resource https://ml.azure.com -o tsv | cut -d $'\t' -f1)` to get your token.",
     "wikiLanguage": "Wiki Language",
     "modelOptions": "Model Options",
     "modelProvider": "Model Provider",

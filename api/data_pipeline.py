@@ -265,6 +265,10 @@ def read_all_documents(path: str, local_ollama: bool = False, excluded_dirs: Lis
             except Exception as e:
                 logger.error(f"Error reading {file_path}: {e}")
 
+    if len(documents) == 0:
+        logger.warning(f"No documents found in {path} with the specified filters.")
+        raise ValueError(f"No documents found in {path} with the specified filters. Please check the excluded directories and files or provide repostory URL to download.")
+    
     logger.info(f"Found {len(documents)} documents")
     return documents
 

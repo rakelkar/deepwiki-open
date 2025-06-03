@@ -28,6 +28,10 @@ interface ConfigurationModalProps {
   customModel: string;
   setCustomModel: (value: string) => void;
   
+  // Bearer token for backend authentication
+  bearerToken: string;
+  setBearerToken: (value: string) => void;
+
   // Platform selection
   selectedPlatform: 'github' | 'gitlab' | 'bitbucket';
   setSelectedPlatform: (value: 'github' | 'gitlab' | 'bitbucket') => void;
@@ -63,6 +67,8 @@ export default function ConfigurationModal({
   setIsCustomModel,
   customModel,
   setCustomModel,
+  bearerToken,
+  setBearerToken,
   selectedPlatform,
   setSelectedPlatform,
   accessToken,
@@ -111,6 +117,21 @@ export default function ConfigurationModal({
               <div className="bg-[var(--background)]/70 p-3 rounded-md border border-[var(--border-color)] text-sm text-[var(--foreground)]">
                 {repositoryInput}
               </div>
+            </div>
+
+            {/* Bearer Token */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                {t.form?.bearerToken || "Bearer Token (for backend authentication)"}
+              </label>
+              <input
+                type="text"
+                value={bearerToken}
+                onChange={(e) => setBearerToken(e.target.value)}
+                placeholder={"Enter your bearer token"}
+                className="w-full px-3 py-2 border rounded-md"
+                autoComplete='off'
+              />
             </div>
             
             {/* Language selection */}

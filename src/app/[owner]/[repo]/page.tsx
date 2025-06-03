@@ -184,6 +184,7 @@ export default function RepoWikiPage() {
   const isCustomModelParam = searchParams.get('is_custom_model') === 'true';
   const customModelParam = searchParams.get('custom_model') || '';
   const language = searchParams.get('language') || 'en';
+  const bearerToken = searchParams.get('bearer_token') || '';
 
   // Import language context for translations
   const { messages } = useLanguage();
@@ -405,6 +406,7 @@ Remember:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + bearerToken // Use bearer token if provided,
           },
           body: JSON.stringify(requestBody)
         });
@@ -630,6 +632,7 @@ IMPORTANT:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + bearerToken // Use bearer token if provided,
         },
         body: JSON.stringify(requestBody)
       });
@@ -1324,7 +1327,13 @@ IMPORTANT:
             language: language,
             comprehensive: isComprehensiveView.toString(),
           });
-          const response = await fetch(`/api/wiki_cache?${params.toString()}`);
+          const response = await fetch(`/api/wiki_cache?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + bearerToken // Use bearer token if provided,
+            },
+          });
 
           if (response.ok) {
             const cachedData = await response.json(); // Returns null if no cache
@@ -1841,6 +1850,7 @@ IMPORTANT:
               isCustomModel={isCustomSelectedModelState}
               customModel={customSelectedModelState}
               language={language}
+              bearerToken={bearerToken}
               onRef={(ref) => (askComponentRef.current = ref)}
             />
           </div>

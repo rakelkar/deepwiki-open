@@ -13,7 +13,12 @@
                 "8001"
             ],
             "jinja": true,
-            "justMyCode": true,
+        },
+        {
+            "name": "Next.js: debug client-side",
+            "type": "msedge",
+            "request": "launch",
+            "url": "http://localhost:3000"
         }
     ]
 }

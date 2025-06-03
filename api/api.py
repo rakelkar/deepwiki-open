@@ -8,7 +8,6 @@ from typing import List, Optional, Dict, Any, Literal
 import json
 from datetime import datetime
 from pydantic import BaseModel, Field
-import google.generativeai as genai
 import asyncio
 import jwt
 from dotenv import load_dotenv
@@ -20,25 +19,9 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file
 load_dotenv()
 
-# Get API keys from environment variables
-google_api_key = os.environ.get('GOOGLE_API_KEY')
-
-# Configure Google Generative AI
-if google_api_key:
-    genai.configure(api_key=google_api_key)
-else:
-    logger.warning("GOOGLE_API_KEY not found in environment variables")
 
 # Hardcoded allowed users (for now)
-ALLOWED_USERS = {
-    "viykeosuji@microsoft.com",
-    "rakelkar@microsoft.com",
-    "akhilanand@microsoft.com",
-    "matferrari@microsoft.com",
-    "sanram@microsoft.com",
-    "Shad.Khan@microsoft.com",
-    # add more allowed users as needed
-}
+ALLOWED_USERS = os.environ.get('MUMFORD_ALLOWED_MEMBERS', "").split(',')
 
 OFFICIAL_MICROSOFT_TENANT = "72f988bf-86f1-41af-91ab-2d7cd011db47"
 OFFICIAL_AME_GBL = "33e01921-4d64-4f8c-a055-5bdaffd5e33d"
@@ -50,20 +33,24 @@ async def verify_bearer_token(credentials: HTTPAuthorizationCredentials = Securi
     try:
         payload: Dict = jwt.decode(token, options={"verify_signature": False})
     except Exception as e:
+        logger.error(f"Error decoding token: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid bearer token")
-
-    # Check that the token is not expired
-    if payload.get("exp") and payload["exp"] < datetime.now().timestamp():
-        raise HTTPException(status_code=401, detail="Token has expired")
 
     # Check that the token is from the official Microsoft tenant
     if payload.get("tid") != OFFICIAL_MICROSOFT_TENANT and payload.get("tid") != OFFICIAL_AME_GBL:
+        logger.warning("Token not issued from the official tenant")
         raise HTTPException(status_code=401, detail="Token not issued from the official tenant")
     
     # Check that the user is authorized. Depending on your token, adjust the claim (e.g., "upn" or "email")
     user = payload.get("upn") or payload.get("email")
     if not user or user.lower() not in ALLOWED_USERS:
+        logger.warning(f"User {user} is not authorized")
         raise HTTPException(status_code=401, detail="User is not authorized")
+
+    # Check that the token is not expired
+    if payload.get("exp") and payload["exp"] < datetime.now().timestamp():
+        logger.warning("Token has expired")
+        raise HTTPException(status_code=401, detail="Token has expired")
     
     logger.info(f"{user} successfully logged in")
     # Optionally return the decoded token or user info for further use
@@ -170,7 +157,7 @@ class ModelConfig(BaseModel):
 
 from api.config import configs
 
-@app.get("/models/config", response_model=ModelConfig, dependencies=[Depends(verify_bearer_token)])
+@app.get("/models/config", response_model=ModelConfig)
 async def get_model_config():
     """
     Get available model providers and their models.
@@ -186,7 +173,7 @@ async def get_model_config():
 
         # Create providers from the config file
         providers = []
-        default_provider = configs.get("default_provider", "google")
+        default_provider = configs.get("default_provider", "azureopenai")
 
         # Add provider configuration based on config.py
         for provider_id, provider_config in configs["providers"].items():
@@ -219,11 +206,11 @@ async def get_model_config():
         return ModelConfig(
             providers=[
                 Provider(
-                    id="google",
-                    name="Google",
+                    id="ollama",
+                    name="Ollama",
                     supportsCustomModel=True,
                     models=[
-                        Model(id="gemini-2.0-flash", name="Gemini 2.0 Flash")
+                        Model(id="qwen3:1.7b", name="Qwen3 1.7b")
                     ]
                 )
             ],
@@ -279,7 +266,7 @@ async def export_wiki(request: WikiExportRequest):
         raise HTTPException(status_code=500, detail=error_msg)
 
 @app.get("/local_repo/structure")
-async def get_local_repo_structure(path: str = Query(None, description="Path to local repository")):
+async def get_local_repo_structure(path: str = Query(None, description="Path to local repository"),  dependencies=[Depends(verify_bearer_token)]):
     """Return the file tree and README content for a local repository."""
     if not path:
         return JSONResponse(
@@ -457,7 +444,7 @@ async def save_wiki_cache(data: WikiCacheRequest) -> bool:
 
 # --- Wiki Cache API Endpoints ---
 
-@app.get("/api/wiki_cache", response_model=Optional[WikiCacheData])
+@app.get("/api/wiki_cache", response_model=Optional[WikiCacheData],  dependencies=[Depends(verify_bearer_token)])
 async def get_cached_wiki(
     owner: str = Query(..., description="Repository owner"),
     repo: str = Query(..., description="Repository name"),

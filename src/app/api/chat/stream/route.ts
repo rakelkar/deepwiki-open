@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const requestBody = await req.json(); // Assuming the frontend sends JSON
     const targetUrl = `${TARGET_SERVER_BASE_URL}/chat/completions/stream`;
+    const authHeader = req.headers.get('Authorization') as string;
 
     // Make the actual request to the backend service
     const backendResponse = await fetch(targetUrl, {
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
         'Accept': 'text/event-stream', // Indicate that we expect a stream
         // TODO: Consider forwarding other relevant headers from the original request (req.headers) if needed,
         // for example, an Authorization header.
-        'Authorization': 'Bearer ' + process.env.BEARER_TOKEN, // Passing bearer token straight for now
+        'Authorization': authHeader, // Passing bearer token straight for now
       },
       body: JSON.stringify(requestBody),
     });
