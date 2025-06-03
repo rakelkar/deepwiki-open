@@ -6,33 +6,22 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
-from api.openai_client import OpenAIClient
 from api.azureopenai_client import AzureOpenAIClient
-from api.openrouter_client import OpenRouterClient
-from adalflow import GoogleGenAIClient, OllamaClient
+from adalflow import OllamaClient
 
 # Get API keys from environment variables
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
 
 # Set keys in environment (in case they're needed elsewhere in the code)
 if OPENAI_API_KEY:
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-if GOOGLE_API_KEY:
-    os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
-if OPENROUTER_API_KEY:
-    os.environ["OPENROUTER_API_KEY"] = OPENROUTER_API_KEY
 
 # Get configuration directory from environment variable, or use default if not set
 CONFIG_DIR = os.environ.get('DEEPWIKI_CONFIG_DIR', None)
 
 # Client class mapping
 CLIENT_CLASSES = {
-    "GoogleGenAIClient": GoogleGenAIClient,
-    "OpenAIClient": OpenAIClient,
     "AzureOpenAIClient": AzureOpenAIClient,
-    "OpenRouterClient": OpenRouterClient,
     "OllamaClient": OllamaClient
 }
 
@@ -69,12 +58,9 @@ def load_generator_config():
             if provider_config.get("client_class") in CLIENT_CLASSES:
                 provider_config["model_client"] = CLIENT_CLASSES[provider_config["client_class"]]
             # Fall back to default mapping based on provider_id
-            elif provider_id in ["google", "openai", "openrouter", "ollama", "azureopenai"]:
+            elif provider_id in ["ollama", "azureopenai"]:
                 default_map = {
-                    "google": GoogleGenAIClient,
-                    "openai": OpenAIClient,
                     "azureopenai": AzureOpenAIClient,
-                    "openrouter": OpenRouterClient,
                     "ollama": OllamaClient
                 }
                 provider_config["model_client"] = default_map[provider_id]
@@ -166,12 +152,12 @@ if repo_config:
         if key in repo_config:
             configs[key] = repo_config[key]
 
-def get_model_config(provider="google", model=None):
+def get_model_config(provider="azureopenai", model=None):
     """
     Get configuration for the specified provider and model
 
     Parameters:
-        provider (str): Model provider ('google', 'openai', 'openrouter', 'ollama')
+        provider (str): Model provider ('azureopenai', 'ollama')
         model (str): Model name, or None to use default model
 
     Returns:

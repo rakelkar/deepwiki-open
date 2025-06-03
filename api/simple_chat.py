@@ -3,7 +3,6 @@ import os
 from typing import List, Optional
 from urllib.parse import unquote
 
-import google.generativeai as genai
 from adalflow.components.model_client.ollama_client import OllamaClient
 from adalflow.core.types import ModelType
 from fastapi import FastAPI, HTTPException
@@ -14,7 +13,6 @@ from pydantic import BaseModel, Field
 from api.config import get_model_config
 from api.data_pipeline import count_tokens, get_file_content
 from api.azureopenai_client import AzureOpenAIClient
-from api.openrouter_client import OpenRouterClient
 from api.rag import RAG
 
 # Configure logging
@@ -24,14 +22,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Get API keys from environment variables
-google_api_key = os.environ.get('GOOGLE_API_KEY')
-
-# Configure Google Generative AI
-if google_api_key:
-    genai.configure(api_key=google_api_key)
-else:
-    logger.warning("GOOGLE_API_KEY not found in environment variables")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -64,7 +54,7 @@ class ChatCompletionRequest(BaseModel):
     type: Optional[str] = Field("github", description="Type of repository (e.g., 'github', 'gitlab', 'bitbucket')")
     
     # model parameters
-    provider: str = Field("google", description="Model provider (google, azureopenai, openrouter, ollama)")
+    provider: str = Field("azureopenai", description="Model provider (azureopenai, ollama)")
     model: Optional[str] = Field(None, description="Model name for the specified provider")
     
     language: Optional[str] = Field("en", description="Language for content generation (e.g., 'en', 'ja', 'zh', 'es', 'kr', 'vi')")
@@ -73,7 +63,7 @@ class ChatCompletionRequest(BaseModel):
 
 @app.post("/chat/completions/stream")
 async def chat_completions_stream(request: ChatCompletionRequest):
-    """Stream a chat completion response directly using Google Generative AI"""
+    """Stream a chat completion response directly using AzureOpenAI or Ollama"""
     try:
         # Check if request contains very large input
         input_too_large = False
@@ -435,28 +425,7 @@ This file contains...
                 model_kwargs=model_kwargs,
                 model_type=ModelType.LLM
             )
-        elif request.provider == "openrouter":
-            logger.info(f"Using OpenRouter with model: {request.model}")
-
-            # Check if OpenRouter API key is set
-            if not os.environ.get("OPENROUTER_API_KEY"):
-                logger.warning("OPENROUTER_API_KEY environment variable is not set, but continuing with request")
-                # We'll let the OpenRouterClient handle this and return a friendly error message
-
-            model = OpenRouterClient()
-            model_kwargs = {
-                "model": request.model,
-                "stream": True,
-                "temperature": model_config["temperature"],
-                "top_p": model_config["top_p"]
-            }
-
-            api_kwargs = model.convert_inputs_to_api_kwargs(
-                input=prompt,
-                model_kwargs=model_kwargs,
-                model_type=ModelType.LLM
-            )
-        elif request.provider == "azureopenai":
+        else:
             logger.info(f"Using AzureOpenai protocol with model: {request.model}")
 
             # Check if an API key is set for AzureOpenai
@@ -478,16 +447,6 @@ This file contains...
                 model_kwargs=model_kwargs,
                 model_type=ModelType.LLM
             )
-        else:
-            # Initialize Google Generative AI model
-            model = genai.GenerativeModel(
-                model_name=model_config["model"],
-                generation_config={
-                    "temperature": model_config["temperature"],
-                    "top_p": model_config["top_p"],
-                    "top_k": model_config["top_k"]
-                }
-            )
 
         # Create a streaming response
         async def response_stream():
@@ -501,18 +460,7 @@ This file contains...
                         if text and not text.startswith('model=') and not text.startswith('created_at='):
                             text = text.replace('<think>', '').replace('</think>', '')
                             yield text
-                elif request.provider == "openrouter":
-                    try:
-                        # Get the response and handle it properly using the previously created api_kwargs
-                        logger.info("Making OpenRouter API call")
-                        response = await model.acall(api_kwargs=api_kwargs, model_type=ModelType.LLM)
-                        # Handle streaming response from OpenRouter
-                        async for chunk in response:
-                            yield chunk
-                    except Exception as e_openrouter:
-                        logger.error(f"Error with OpenRouter API: {str(e_openrouter)}")
-                        yield f"\nError with OpenRouter API: {str(e_openrouter)}\n\nPlease check that you have set the OPENROUTER_API_KEY environment variable with a valid API key."
-                elif request.provider == "azureopenai":
+                else:
                     try:
                         # Get the response and handle it properly using the previously created api_kwargs
                         logger.info("Making AzureOpenai API call")
@@ -529,13 +477,6 @@ This file contains...
                     except Exception as e_azureopenai:
                         logger.error(f"Error with AzureOpenai API: {str(e_azureopenai)}")
                         yield f"\nError with AzureOpenai API: {str(e_azureopenai)}\n\nPlease check that you have set the OPENAI_API_KEY environment variable with a valid API key."
-                else:
-                    # Generate streaming response
-                    response = model.generate_content(prompt, stream=True)
-                    # Stream the response
-                    for chunk in response:
-                        if hasattr(chunk, 'text'):
-                            yield chunk.text
 
             except Exception as e_outer:
                 logger.error(f"Error in streaming response: {str(e_outer)}")
@@ -577,26 +518,7 @@ This file contains...
                                 if text and not text.startswith('model=') and not text.startswith('created_at='):
                                     text = text.replace('<think>', '').replace('</think>', '')
                                     yield text
-                        elif request.provider == "openrouter":
-                            try:
-                                # Create new api_kwargs with the simplified prompt
-                                fallback_api_kwargs = model.convert_inputs_to_api_kwargs(
-                                    input=simplified_prompt,
-                                    model_kwargs=model_kwargs,
-                                    model_type=ModelType.LLM
-                                )
-
-                                # Get the response using the simplified prompt
-                                logger.info("Making fallback OpenRouter API call")
-                                fallback_response = await model.acall(api_kwargs=fallback_api_kwargs, model_type=ModelType.LLM)
-
-                                # Handle streaming fallback_response from OpenRouter
-                                async for chunk in fallback_response:
-                                    yield chunk
-                            except Exception as e_fallback:
-                                logger.error(f"Error with OpenRouter API fallback: {str(e_fallback)}")
-                                yield f"\nError with OpenRouter API fallback: {str(e_fallback)}\n\nPlease check that you have set the OPENROUTER_API_KEY environment variable with a valid API key."
-                        elif request.provider == "azureopenai":
+                        else:
                             try:
                                 # Create new api_kwargs with the simplified prompt
                                 fallback_api_kwargs = model.convert_inputs_to_api_kwargs(
@@ -616,24 +538,6 @@ This file contains...
                             except Exception as e_fallback:
                                 logger.error(f"Error with AzureOpenai API fallback: {str(e_fallback)}")
                                 yield f"\nError with AzureOpenai API fallback: {str(e_fallback)}\n\nPlease check that you have set the OPENAI_API_KEY environment variable with a valid API key."
-                        else:
-                            # Initialize Google Generative AI model
-                            model_config = get_model_config(request.provider, request.model)
-                            fallback_model = genai.GenerativeModel(
-                                model_name=model_config["model"],
-                                generation_config={
-                                    "temperature": model_config["model_kwargs"].get("temperature", 0.7),
-                                    "top_p": model_config["model_kwargs"].get("top_p", 0.8),
-                                    "top_k": model_config["model_kwargs"].get("top_k", 40)
-                                }
-                            )
-
-                            # Get streaming response using simplified prompt
-                            fallback_response = fallback_model.generate_content(simplified_prompt, stream=True)
-                            # Stream the fallback response
-                            for chunk in fallback_response:
-                                if hasattr(chunk, 'text'):
-                                    yield chunk.text
                     except Exception as e2:
                         logger.error(f"Error in fallback streaming response: {str(e2)}")
                         yield f"\nI apologize, but your request is too large for me to process. Please try a shorter query or break it into smaller parts."
